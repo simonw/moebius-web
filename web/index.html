@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Moebius Inpainting — WebGPU</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Moebius Inpainting</h1>
+      <p class="sub">
+        0.22B image-inpainting model running fully in your browser via ONNX Runtime Web +
+        WebGPU. Paint over what you want removed, then Run.
+      </p>
+      <p id="backend" class="backend"></p>
+    </header>
+
+    <main>
+      <section class="stage">
+        <div class="canvas-wrap">
+          <canvas id="image" width="512" height="512"></canvas>
+          <canvas id="mask" width="512" height="512"></canvas>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="result" width="512" height="512"></canvas>
+          <div id="result-placeholder" class="placeholder">result</div>
+        </div>
+      </section>
+
+      <section class="controls">
+        <div class="row">
+          <label class="filebtn">
+            Upload image
+            <input type="file" id="file" accept="image/*" hidden />
+          </label>
+          <button id="sample">Use sample</button>
+          <button id="clear-mask">Clear mask</button>
+        </div>
+
+        <div class="row">
+          <label>Brush <input type="range" id="brush" min="5" max="120" value="40" /></label>
+          <label>Steps <input type="range" id="steps" min="4" max="30" value="20" /><span id="steps-v">20</span></label>
+          <label>Guidance <input type="range" id="cfg" min="1" max="6" step="0.5" value="2" /><span id="cfg-v">2</span></label>
+          <label>Seed <input type="number" id="seed" value="0" style="width:5em" /></label>
+          <label><input type="checkbox" id="paste" checked /> Paste back</label>
+        </div>
+
+        <div class="row">
+          <button id="run" disabled>Run inpaint</button>
+          <a id="download" class="filebtn" style="display:none">Download</a>
+          <span id="status" class="status"></span>
+        </div>
+        <div class="progress"><div id="bar"></div></div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

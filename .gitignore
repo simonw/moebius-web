@@ -19,3 +19,10 @@ weights/
 # Repro / scratch
 reference_out/
 .DS_Store
+
+# web app
+web/node_modules/
+web/dist/
+web/public/ort/
+web/public/models
+web/public/sample.png
