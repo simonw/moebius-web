@@ -1,5 +1,6 @@
 import { MoebiusPipeline } from "./pipeline.ts";
 import { IMG, toSquareCanvas, type Fitted } from "./imaging.ts";
+import { cachedBytes } from "./modelcache.ts";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -10,7 +11,9 @@ const resultPlaceholder = $("result-placeholder");
 const statusEl = $("status");
 const backendEl = $("backend");
 const bar = $<HTMLDivElement>("bar");
+const barLabel = $("bar-label");
 const runBtn = $<HTMLButtonElement>("run");
+const runHint = $("run-hint");
 const downloadLink = $<HTMLAnchorElement>("download");
 
 const ictx = imageCanvas.getContext("2d")!;
@@ -98,9 +101,10 @@ function ensureModels(): Promise<MoebiusPipeline | null> {
     MoebiusPipeline.configureRuntime(ORT_BASE);
     const p = new MoebiusPipeline();
     try {
-      await p.load(MODEL_BASE, (stage) => (statusEl.textContent = stage + "…"));
+      await p.load(MODEL_BASE, setProgress);
       backendEl.textContent = `Runtime: ONNX Runtime Web · ${p.backend.toUpperCase()}`;
       statusEl.textContent = "Models ready.";
+      runHint.style.display = "none";
       return p;
     } catch (err) {
       statusEl.textContent = "Model load failed: " + (err as Error).message;
@@ -113,6 +117,23 @@ function ensureModels(): Promise<MoebiusPipeline | null> {
 
 function maybeEnableRun() {
   runBtn.disabled = !hasImage;
+}
+
+// Shared progress renderer for both model loading (byte counts) and denoising (step counts).
+function setProgress(stage: string, cur?: number, total?: number) {
+  if (!total) {
+    statusEl.textContent = stage + "…";
+    barLabel.textContent = "";
+    return;
+  }
+  const pct = (cur! / total) * 100;
+  bar.style.width = `${pct}%`;
+  statusEl.textContent = stage;
+  // large totals ⇒ byte download; format as MB
+  barLabel.textContent =
+    total > 100000
+      ? `${stage} — ${(cur! / 1e6).toFixed(1)} / ${(total / 1e6).toFixed(0)} MB (${pct.toFixed(0)}%)`
+      : `${stage} — ${cur} / ${total} (${pct.toFixed(0)}%)`;
 }
 
 // ---------- run ----------
@@ -138,10 +159,7 @@ runBtn.addEventListener("click", async () => {
       guidance: +$<HTMLInputElement>("cfg").value,
       seed: +$<HTMLInputElement>("seed").value,
       paste: $<HTMLInputElement>("paste").checked,
-      onProgress: (stage, step, total) => {
-        statusEl.textContent = total ? `${stage} ${step}/${total}` : stage + "…";
-        if (total) bar.style.width = `${(step! / total) * 100}%`;
-      },
+      onProgress: setProgress,
     });
     resultCanvas.getContext("2d")!.drawImage(out, 0, 0);
     resultPlaceholder.style.display = "none";
@@ -170,7 +188,8 @@ runBtn.addEventListener("click", async () => {
   }
 });
 
-// Kick off model loading early (in the background) so first run is faster.
-window.addEventListener("load", () => {
-  setTimeout(ensureModels, 500);
+// Don't download anything until the user clicks Run. But if the weights are already in the
+// browser's Cache Storage from a previous visit, drop the "(downloads models)" hint.
+window.addEventListener("load", async () => {
+  if ((await cachedBytes()) > 1_200_000_000) runHint.style.display = "none";
 });

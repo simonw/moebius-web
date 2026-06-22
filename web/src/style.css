@@ -59,8 +59,14 @@ button, .filebtn {
   border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 0.9rem;
 }
 button#run { background: var(--accent); color: #0b0d11; border: none; font-weight: 600; }
+button#run .hint { font-weight: 400; font-size: 0.85em; opacity: 0.75; }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 .status { color: var(--muted); font-size: 0.9rem; }
-.progress { height: 6px; background: #262b35; border-radius: 3px; overflow: hidden; margin-top: 8px; }
-#bar { height: 100%; width: 0; background: var(--accent); transition: width 0.2s; }
+.progress { height: 12px; background: #262b35; border-radius: 6px; overflow: hidden; margin-top: 10px; }
+#bar {
+  height: 100%; width: 0;
+  background: linear-gradient(90deg, var(--accent), #9ec5ff);
+  transition: width 0.15s ease-out;
+}
+.bar-label { margin-top: 6px; font-size: 0.8rem; color: var(--muted); min-height: 1.1em; font-variant-numeric: tabular-nums; }
 input[type="range"] { accent-color: var(--accent); }

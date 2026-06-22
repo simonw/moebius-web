@@ -1,5 +1,6 @@
 import * as ort from "onnxruntime-web/webgpu";
 import { makeDDIM, ddimStep } from "./ddim.ts";
+import { loadModelBytes, requestPersistentStorage } from "./modelcache.ts";
 import {
   IMG,
   LAT,
@@ -51,12 +52,23 @@ export class MoebiusPipeline {
       executionProviders: ep,
       graphOptimizationLevel: "all",
     };
-    onProgress?.("Loading VAE encoder");
-    this.enc = await ort.InferenceSession.create(`${modelBase}/vae_encoder.onnx`, opts);
-    onProgress?.("Loading VAE decoder");
-    this.dec = await ort.InferenceSession.create(`${modelBase}/vae_decoder.onnx`, opts);
-    onProgress?.("Loading UNet (large)");
-    this.unet = await ort.InferenceSession.create(`${modelBase}/unet.onnx`, opts);
+    void requestPersistentStorage();
+
+    // Fetch each model's bytes through the persistent Cache Storage layer (keyed by the
+    // stable URL), then build the session from the bytes. This avoids re-downloading on
+    // every load despite Hugging Face's rotating signed CDN URLs.
+    const get = (file: string, label: string, idx: number) =>
+      loadModelBytes(`${modelBase}/${file}`, (loaded, total, fromCache) =>
+        onProgress?.(
+          fromCache ? `${label} (cached, ${idx}/3)` : `Downloading ${label} (${idx}/3)`,
+          loaded,
+          total,
+        ),
+      );
+
+    this.enc = await ort.InferenceSession.create(await get("vae_encoder.onnx", "VAE encoder", 1), opts);
+    this.dec = await ort.InferenceSession.create(await get("vae_decoder.onnx", "VAE decoder", 2), opts);
+    this.unet = await ort.InferenceSession.create(await get("unet.onnx", "UNet", 3), opts);
     // report whichever EP actually got selected for the unet
     this.backend = ep[0];
   }

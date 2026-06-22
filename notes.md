@@ -111,6 +111,29 @@ Running log of what Claude Opus 4.8 in Claude Code figured out. Newest at the bo
   Fix = serve /ort/* as raw static files via configureServer middleware.
 - COOP/COEP headers set (needed for threaded WASM / SharedArrayBuffer).
 
+## Model caching: HF signed-URL problem + Cache Storage fix (FIXED)
+- Symptom: ~1.27GB re-downloaded on every page load; browser HTTP cache never hit.
+- Root cause (diagnosed via curl): `huggingface.co/<repo>/resolve/main/<file>` returns 302 →
+  a CDN URL on cas-bridge.xethub.hf.co / us.aws.cdn.hf.co with rotating query params
+  (Expires, Signature, X-Amz-Expires, Key-Pair-Id). The final 200 even has
+  `Cache-Control: public, max-age=31536000` + ETag — BUT the URL changes every request, so the
+  HTTP cache key never matches. Also `fetch` of resolve is `redirected:true`, which the Cache
+  API refuses to `cache.put()` directly.
+- How others solve it: checked /tmp/Moebius/whisper-web (Transformers.js, minified). It uses
+  the **Cache Storage API** `caches.open("transformers-cache")`, keyed by the STABLE
+  `…/resolve/main/<file>` URL (not the redirected CDN URL), streams the download with progress,
+  then `cache.put(stableURL, new Response(bytes))`. That's why it survives the rotating URLs.
+- Our fix (web/src/modelcache.ts): same pattern. `loadModelBytes(url)`:
+  open `caches.open("moebius-onnx-v1")`, `match(url)` → hit returns bytes; miss → `fetch(url)`,
+  stream into one preallocated Uint8Array(content-length) with progress, then
+  `cache.put(url, new Response(bytes.buffer))`. pipeline.ts builds the ORT session from the
+  returned Uint8Array instead of passing a URL string. Also call
+  `navigator.storage.persist()` to reduce eviction of ~1.2GB.
+- UI: load progress now shows "Downloading UNet 123/907 MB" with a bar; cached files show
+  "UNet (cached)". modelcache also exposes clearModelCache()/cachedBytes() helpers.
+- Note: the small same-origin /ort/*.wasm runtime already caches fine via HTTP (stable URLs);
+  only the cross-origin HF model files needed this.
+
 ## Safari WebGPU: Conv3d shader bug (FOUND + FIXED)
 - Works in Chrome, but Safari's WebGPU (Metal) backend fails at run time compiling the
   shader for the `attn1.pos_conv` Conv3d: ORT-Web emits MSL `array<unsigned,5>(a,b,c,d,e)`

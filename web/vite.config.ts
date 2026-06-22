@@ -32,8 +32,12 @@ function ortRuntime(): Plugin {
   };
   return {
     name: "ort-runtime",
-    configureServer: (s) => s.middlewares.use(handler),
-    configurePreviewServer: (s) => s.middlewares.use(handler),
+    configureServer(server) {
+      server.middlewares.use(handler);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(handler);
+    },
     // copy the assets into the build output at dist/ort/*
     closeBundle() {
       const outDir = path.resolve(__dirname, "dist/ort");

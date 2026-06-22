@@ -15,8 +15,9 @@
       </p>
       <p class="note">
         ⚠️ The first run downloads <strong>~1.27&nbsp;GB</strong> of model weights from Hugging
-        Face (the UNet alone is 907&nbsp;MB). Your browser caches them, so later runs don't
-        re-download. A WebGPU-capable browser (e.g. Chrome) is required.
+        Face (the UNet alone is 907&nbsp;MB). They are stored in the browser's Cache Storage and
+        reused on later visits — no re-download. A WebGPU-capable browser (recent Chrome or
+        Safari) is required.
       </p>
       <p id="backend" class="backend"></p>
     </header>
@@ -52,11 +53,12 @@
         </div>
 
         <div class="row">
-          <button id="run" disabled>Run inpaint</button>
+          <button id="run" disabled>Run inpaint <span id="run-hint" class="hint">(downloads models)</span></button>
           <a id="download" class="filebtn" style="display:none">Download</a>
           <span id="status" class="status"></span>
         </div>
         <div class="progress"><div id="bar"></div></div>
+        <div id="bar-label" class="bar-label"></div>
       </section>
     </main>
 
