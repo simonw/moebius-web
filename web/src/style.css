@@ -15,7 +15,19 @@ body {
 }
 header h1 { margin: 0 0 4px; font-size: 1.5rem; }
 .sub { color: var(--muted); margin: 0 0 4px; max-width: 720px; }
-.backend { color: var(--accent); font-size: 0.85rem; margin: 4px 0 0; min-height: 1.1em; }
+.note {
+  color: #e7c46b;
+  background: rgba(231, 196, 107, 0.08);
+  border: 1px solid rgba(231, 196, 107, 0.25);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin: 10px 0 0;
+  max-width: 720px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+.note strong { color: #f3d684; }
+.backend { color: var(--accent); font-size: 0.85rem; margin: 8px 0 0; min-height: 1.1em; }
 main { max-width: 1100px; }
 .stage { display: flex; gap: 16px; flex-wrap: wrap; margin: 18px 0; }
 .canvas-wrap {

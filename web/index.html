@@ -13,6 +13,11 @@
         Moebius (0.22B) image-inpainting model, running in the browser with ONNX Runtime Web
         on WebGPU. Paint over a region to replace, then Run.
       </p>
+      <p class="note">
+        ⚠️ The first run downloads <strong>~1.27&nbsp;GB</strong> of model weights from Hugging
+        Face (the UNet alone is 907&nbsp;MB). Your browser caches them, so later runs don't
+        re-download. A WebGPU-capable browser (e.g. Chrome) is required.
+      </p>
       <p id="backend" class="backend"></p>
     </header>
 
