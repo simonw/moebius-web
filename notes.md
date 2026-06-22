@@ -111,6 +111,20 @@ Running log of what Claude Opus 4.8 in Claude Code figured out. Newest at the bo
   Fix = serve /ort/* as raw static files via configureServer middleware.
 - COOP/COEP headers set (needed for threaded WASM / SharedArrayBuffer).
 
+## Safari WebGPU: Conv3d shader bug (FOUND + FIXED)
+- Works in Chrome, but Safari's WebGPU (Metal) backend fails at run time compiling the
+  shader for the `attn1.pos_conv` Conv3d: ORT-Web emits MSL `array<unsigned,5>(a,b,c,d,e)`
+  which Apple's Metal compiler rejects ("no matching constructor"). 15 such Conv3d ops.
+- These pos_conv are `Conv3d(1, dim_k, (1,15,15), pad=(0,7,7))` over V=(b,1,v,hh,ww). Depth
+  kernel=1 over v with in_channels=1 ⇒ mathematically a 2D conv applied per-v-slice.
+- FIX (python/reexport_unet_no_conv3d.py): replace each pos_conv with a Conv2d wrapper
+  (fold (b,v)→batch, Conv2d(1,dim_k,15,pad7), reshape/permute back). Weights copied via
+  squeeze(2). torch self-parity 2.6e-6; ONNX vs patched torch 4.4e-6; Node full-pipeline
+  verify still PASS (mean|Δ| 7.8e-7). New unet.onnx has 0 3D-Conv nodes. Re-uploaded to HF.
+- NOTE: EP fallback is per-session-create, not per-op — Safari created the webgpu session
+  fine then failed at first run; there's no automatic wasm fallback once running. Removing
+  Conv3d is the real fix (also faster than the naive Conv3d kernel everywhere).
+
 ## WebGPU op coverage (confirmed from ORT source at /tmp/Moebius/onnxruntime)
 - js/web/lib/wasm/jsep/webgpu/op-resolve-rules.ts registers: Einsum ✓, Conv ✓
   (conv.ts has computeConv3DInfo / createConv3DNaiveProgramInfo → Conv3d pos_conv works,
