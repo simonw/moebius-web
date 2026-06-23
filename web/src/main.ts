@@ -160,6 +160,11 @@ runBtn.addEventListener("click", async () => {
       seed: +$<HTMLInputElement>("seed").value,
       paste: $<HTMLInputElement>("paste").checked,
       onProgress: setProgress,
+      livePreview: () => $<HTMLInputElement>("live-preview").checked,
+      onStep: (canvas) => {
+        resultCanvas.getContext("2d")!.drawImage(canvas, 0, 0);
+        resultPlaceholder.style.display = "none";
+      },
     });
     resultCanvas.getContext("2d")!.drawImage(out, 0, 0);
     resultPlaceholder.style.display = "none";

@@ -27,6 +27,8 @@ export interface RunOptions {
   seed: number;
   paste: boolean;
   onProgress?: Progress;
+  onStep?: (canvas: HTMLCanvasElement) => void;
+  livePreview?: () => boolean;
 }
 
 export class MoebiusPipeline {
@@ -139,7 +141,7 @@ export class MoebiusPipeline {
     maskCanvas: HTMLCanvasElement,
     opts: RunOptions,
   ): Promise<HTMLCanvasElement> {
-    const { steps, guidance, seed, paste, onProgress } = opts;
+    const { steps, guidance, seed, paste, onProgress, onStep, livePreview } = opts;
     const ddim = makeDDIM(steps);
 
     onProgress?.("Encoding image");
@@ -159,6 +161,19 @@ export class MoebiusPipeline {
       for (let p = 0; p < plane; p++) latents[c * plane + p] += NOISE_OFFSET * off[c];
     }
 
+    // Decode latents and apply paste-back if requested — shared by step previews and final result.
+    const buildResult = async (lat: Float32Array): Promise<HTMLCanvasElement> => {
+      const img = await this.decode(lat);
+      if (paste) return pasteBack(img, imageCanvas, maskBin);
+      const c = document.createElement("canvas");
+      c.width = IMG;
+      c.height = IMG;
+      c.getContext("2d")!.putImageData(img, 0, 0);
+      return c;
+    };
+
+    let lastStepCanvas: HTMLCanvasElement | null = null;
+
     const tl = ddim.timesteps;
     for (let i = 0; i < tl.length; i++) {
       const t = tl[i];
@@ -166,20 +181,17 @@ export class MoebiusPipeline {
       onProgress?.("Denoising", i + 1, tl.length);
       const eps = await this.unetCFG(latents, mask64, maskedLat, t, guidance);
       latents = ddimStep(eps, latents, t, prevT, ddim);
-      // yield to UI
-      await new Promise((r) => setTimeout(r, 0));
+      if (onStep && livePreview?.()) {
+        lastStepCanvas = await buildResult(latents);
+        onStep(lastStepCanvas);
+      } else {
+        lastStepCanvas = null;
+        // yield to UI so progress bar can repaint
+        await new Promise((r) => setTimeout(r, 0));
+      }
     }
 
     onProgress?.("Decoding");
-    const resultData = await this.decode(latents);
-
-    const out = document.createElement("canvas");
-    out.width = IMG;
-    out.height = IMG;
-    if (paste) {
-      return pasteBack(resultData, imageCanvas, maskBin);
-    }
-    out.getContext("2d")!.putImageData(resultData, 0, 0);
-    return out;
+    return lastStepCanvas ?? await buildResult(latents);
   }
 }
